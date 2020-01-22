@@ -22,6 +22,7 @@ import dev.miku.r2dbc.mysql.constant.Capabilities;
 import dev.miku.r2dbc.mysql.constant.ServerStatuses;
 import dev.miku.r2dbc.mysql.constant.ZeroDateOption;
 import dev.miku.r2dbc.mysql.util.ConnectionContext;
+import dev.miku.r2dbc.mysql.util.ServerVersion;
 import io.r2dbc.spi.IsolationLevel;
 import org.junit.jupiter.api.Test;
 
@@ -118,8 +119,7 @@ class MySqlConnectionTest {
 
     private static ConnectionContext mockContext() {
         ConnectionContext context = new ConnectionContext(ZeroDateOption.USE_NULL);
-        context.setConnectionId(1);
-        context.setCapabilities(Capabilities.ALL_SUPPORTED);
+        context.init(1, ServerVersion.create(8, 0, 18), Capabilities.ALL_SUPPORTED);
         context.setServerStatuses(ServerStatuses.AUTO_COMMIT);
         return context;
     }

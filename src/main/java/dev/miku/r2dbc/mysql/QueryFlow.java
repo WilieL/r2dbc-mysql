@@ -165,7 +165,7 @@ final class QueryFlow {
      * @return close sent signal.
      */
     static Mono<Void> close(Client client, int statementId) {
-        return client.sendOnly(new PreparedCloseMessage(statementId));
+        return client.exchange(new PreparedCloseMessage(statementId), ignored -> true).then();
     }
 
     /**

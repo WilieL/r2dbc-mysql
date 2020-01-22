@@ -57,9 +57,7 @@ class ServerMessageDecoderTest {
     private static ConnectionContext context() {
         ConnectionContext mocked = new ConnectionContext(ZeroDateOption.USE_NULL);
 
-        mocked.setConnectionId(1);
-        mocked.setCapabilities(Capabilities.ALL_SUPPORTED);
-        mocked.setServerVersion(ServerVersion.parse("8.0.18.MOCKED"));
+        mocked.init(1, ServerVersion.create(8, 0, 18), Capabilities.ALL_SUPPORTED);
         mocked.setServerStatuses(ServerStatuses.AUTO_COMMIT);
 
         return mocked;

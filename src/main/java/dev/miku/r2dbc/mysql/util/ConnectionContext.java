@@ -54,20 +54,18 @@ public final class ConnectionContext {
         this.zeroDateOption = AssertUtils.requireNonNull(zeroDateOption, "zeroDateOption must not be null");
     }
 
+    public void init(int connectionId, ServerVersion serverVersion, int capabilities) {
+        this.connectionId = connectionId;
+        this.serverVersion = serverVersion;
+        this.capabilities = capabilities;
+    }
+
     public int getConnectionId() {
         return connectionId;
     }
 
-    public void setConnectionId(int connectionId) {
-        this.connectionId = connectionId;
-    }
-
     public ServerVersion getServerVersion() {
         return serverVersion;
-    }
-
-    public void setServerVersion(ServerVersion serverVersion) {
-        this.serverVersion = serverVersion;
     }
 
     public CharCollation getCollation() {
@@ -90,7 +88,7 @@ public final class ConnectionContext {
         return capabilities;
     }
 
-    public void setCapabilities(int capabilities) {
-        this.capabilities = capabilities;
+    public String getMessage(String original) {
+        return "[cid: " + this.connectionId + "] " + original;
     }
 }

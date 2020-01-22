@@ -41,9 +41,9 @@ class RequestQueueTest {
         RequestQueue queue = new RequestQueue();
         List<Integer> arr = new AddEventList(queue);
 
-        Mono<Boolean> third = Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(3))));
-        Mono<Boolean> second = Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(2))));
-        Mono<Boolean> first = Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(1))));
+        Mono<Boolean> third = Mono.create(sink -> queue.submit(RequestTask.wrap(sink, arr.add(3))));
+        Mono<Boolean> second = Mono.create(sink -> queue.submit(RequestTask.wrap(sink, arr.add(2))));
+        Mono<Boolean> first = Mono.create(sink -> queue.submit(RequestTask.wrap(sink, arr.add(1))));
 
         Flux.concat(first, second, third)
             .as(StepVerifier::create)
@@ -58,19 +58,19 @@ class RequestQueueTest {
         RequestQueue queue = new RequestQueue();
         List<Integer> arr = new AddEventList(queue);
 
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(5))))
+        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, arr.add(5))))
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(4))))
+        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, arr.add(4))))
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
         queue.dispose();
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(3))))
+        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, arr.add(3))))
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, () -> arr.add(2))))
+        Mono.create(sink -> queue.submit(RequestTask.wrap(sink, arr.add(2))))
             .as(StepVerifier::create)
             .verifyError(IllegalStateException.class);
 
@@ -83,11 +83,11 @@ class RequestQueueTest {
         IntegerData[] sources = new IntegerData[]{new IntegerData(1), new IntegerData(2), new IntegerData(3), new IntegerData(4)};
         List<Integer> arr = new AddEventList(queue);
 
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sources[0], sink, () -> arr.add(sources[0].consumeData()))))
+        Mono.create(sink -> queue.submit(RequestTask.wrap(sources[0], sink, arr.add(sources[0].consumeData()))))
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();
-        Mono.create(sink -> queue.submit(RequestTask.wrap(sources[1], sink, () -> arr.add(sources[1].consumeData()))))
+        Mono.create(sink -> queue.submit(RequestTask.wrap(sources[1], sink, arr.add(sources[1].consumeData()))))
             .as(StepVerifier::create)
             .expectNext(true)
             .verifyComplete();

@@ -40,6 +40,7 @@ import io.r2dbc.spi.R2dbcPermissionDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.EmitterProcessor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.annotation.Nullable;
 
@@ -104,9 +105,7 @@ final class LoginFlow {
         }
 
         // No need initialize server statuses because it has initialized by read filter.
-        this.context.setConnectionId(header.getConnectionId());
-        this.context.setServerVersion(serverVersion);
-        this.context.setCapabilities(calculateClientCapabilities(message.getServerCapabilities()));
+        this.context.init(header.getConnectionId(), serverVersion, clientCapabilities(message.getServerCapabilities()));
 
         this.authProvider = MySqlAuthProvider.build(message.getAuthType());
         this.salt = message.getSalt();
@@ -177,11 +176,11 @@ final class LoginFlow {
         });
     }
 
-    private int calculateClientCapabilities(int serverCapabilities) {
+    private int clientCapabilities(int serverCapabilities) {
         // Remove unknown flags.
-        int clientCapabilities = serverCapabilities & Capabilities.ALL_SUPPORTED;
+        int capabilities = serverCapabilities & Capabilities.ALL_SUPPORTED;
 
-        if ((clientCapabilities & Capabilities.SSL) == 0) {
+        if ((capabilities & Capabilities.SSL) == 0) {
             // Server unsupported SSL.
             if (sslMode.requireSsl()) {
                 String message = String.format("Server version '%s' does not support SSL but mode '%s' requires SSL", context.getServerVersion(), sslMode);
@@ -196,24 +195,24 @@ final class LoginFlow {
             // Server supports SSL.
             if (!sslMode.startSsl()) {
                 // SSL does not start, just remove flag.
-                clientCapabilities &= ~Capabilities.SSL;
+                capabilities &= ~Capabilities.SSL;
             }
 
             if (!sslMode.verifyCertificate()) {
                 // No need verify server cert, remove flag.
-                clientCapabilities &= ~Capabilities.SSL_VERIFY_SERVER_CERT;
+                capabilities &= ~Capabilities.SSL_VERIFY_SERVER_CERT;
             }
         }
 
-        if (database.isEmpty() && (clientCapabilities & Capabilities.CONNECT_WITH_DB) != 0) {
-            clientCapabilities &= ~Capabilities.CONNECT_WITH_DB;
+        if (database.isEmpty() && (capabilities & Capabilities.CONNECT_WITH_DB) != 0) {
+            capabilities &= ~Capabilities.CONNECT_WITH_DB;
         }
 
-        if (ATTRIBUTES.isEmpty() && (clientCapabilities & Capabilities.CONNECT_ATTRS) != 0) {
-            clientCapabilities &= ~Capabilities.CONNECT_ATTRS;
+        if (ATTRIBUTES.isEmpty() && (capabilities & Capabilities.CONNECT_ATTRS) != 0) {
+            capabilities &= ~Capabilities.CONNECT_ATTRS;
         }
 
-        return clientCapabilities;
+        return capabilities;
     }
 
     /**
@@ -267,10 +266,13 @@ final class LoginFlow {
     private enum State {
 
         INIT {
+
+            private final Predicate<ServerMessage> complete = message -> message instanceof ErrorMessage || message instanceof HandshakeRequest;
+
             @Override
             Mono<State> handle(LoginFlow flow) {
                 // Server send first, so no need send anything to server in here.
-                return flow.client.receiveOnly().handle((message, sink) -> {
+                return flow.client.exchange(Flux.empty(), complete).<State>handle((message, sink) -> {
                     if (message instanceof ErrorMessage) {
                         sink.error(ExceptionFactory.createException((ErrorMessage) message, null));
                     } else if (message instanceof HandshakeRequest) {
@@ -278,15 +280,15 @@ final class LoginFlow {
 
                         if (flow.useSsl()) {
                             sink.next(SSL);
-                            sink.complete();
                         } else {
                             sink.next(HANDSHAKE);
-                            sink.complete();
                         }
+
+                        sink.complete();
                     } else {
                         sink.error(new IllegalStateException(String.format("Unexpected message type '%s' in handshake init phase", message.getClass().getSimpleName())));
                     }
-                });
+                }).last();
             }
         },
         SSL {
